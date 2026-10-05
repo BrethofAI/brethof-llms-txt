@@ -68,7 +68,7 @@ skip = true                     # for the app: keep your own llms.txt, never off
 
 ## Privacy and support
 
-The App's privacy policy is in [PRIVACY.md](PRIVACY.md). For help, open an [issue](https://github.com/BrethofAI/brethof-llms-txt/issues) or email hello@brethof.ai.
+The App's [terms of service](TERMS.md) and [privacy policy](PRIVACY.md). For help, open an [issue](https://github.com/BrethofAI/brethof-llms-txt/issues) or email hello@brethof.ai.
 
 ## Licence
 
