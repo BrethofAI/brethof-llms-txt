@@ -197,6 +197,14 @@ def _skip_dir(name: str) -> bool:
 
 
 README_PART = re.compile(r"^readme[._-].+", re.I)   # README.head.md, README.foot.md: pieces of the README
+LANG_COPY = re.compile(r"^(.+?)[._-]([a-z]{2}(?:[-_][A-Za-z]{2,4})?)$", re.I)
+
+
+def _translation_copy(p: Path) -> bool:
+    """X_en.md beside X.md (or X.zh-CN.md beside X.md) is a translation of X, whatever the
+    language: ChatGLM3 keeps English copies of its Chinese docs that way."""
+    m = LANG_COPY.match(p.stem)
+    return bool(m) and (p.parent / (m.group(1) + p.suffix)).is_file()
 
 
 def _doc_files(base: Path, skip: set[Path] | None = None) -> list[Path]:
@@ -216,7 +224,8 @@ def _doc_files(base: Path, skip: set[Path] | None = None) -> list[Path]:
                 if not _skip_dir(p.name) and not p.is_symlink() and p.resolve() not in skip:
                     stack.append(p)
             elif p.suffix.lower() in DOC_EXT and not LANG_SUFFIX.search(p.stem) \
-                    and p.stem.lower() not in SKIP_ROOT and not README_PART.match(p.stem):
+                    and p.stem.lower() not in SKIP_ROOT and not README_PART.match(p.stem) \
+                    and not _translation_copy(p):
                 out.append(p)
     return out
 
@@ -435,7 +444,7 @@ def collect(root: Path, owner: str = "", name: str = "", branch: str = "") -> Re
     # other root-level documents (llama.cpp keeps docs at the root too)
     roots = [p for p in sorted(root.iterdir()) if p.is_file() and p.suffix.lower() in DOC_EXT
              and p.stem.lower() not in SKIP_ROOT and p.stem.lower() not in SECONDARY
-             and not LANG_SUFFIX.search(p.stem) and not README_PART.match(p.stem)]
+             and not LANG_SUFFIX.search(p.stem) and not README_PART.match(p.stem) and not _translation_copy(p)]
     repo.pages = take(roots) + repo.pages
 
     for cand in EXAMPLE_ROOTS:

@@ -122,21 +122,24 @@ def generate(repo: Repo, model: Model | None, cache: dict | None = None,
     skey = hashlib.sha1(((repo.readme.sha if repo.readme else "") + repo.package_description
                          + repo.title).encode()).hexdigest()[:12]
     hit = cache.get("_summary", {})
+    lang = str(repo.config.get("language", "")).strip().lower()   # the project's own choice wins
     if repo.config.get("summary"):
         summary, details = repo.config["summary"], repo.config.get("details", "")
+        lang = lang or hit.get("lang", "")
     elif hit.get("sha") == skey or (known_only and hit):
         summary, details = hit.get("summary", ""), hit.get("details", "")
+        lang = lang or hit.get("lang", "")
         skey = hit.get("sha", skey)
     else:
-        summary, details = summarize(repo, model)
+        summary, details, lang = summarize(repo, model)
     if known_only:
         stale = {p.path: cache[p.path] for p in every if p.path in cache and cache[p.path].get("sha") != p.sha}
         descs = describe(repo, [p for p in every if p.path not in stale], None, cache)
         descs.update({path: v.get("desc", "") for path, v in stale.items()})
     else:
-        descs = describe(repo, every, model, cache)
+        descs = describe(repo, every, model, cache, lang or "en")
 
-    new_cache = {"_summary": {"sha": skey, "summary": summary, "details": details}}
+    new_cache = {"_summary": {"sha": skey, "summary": summary, "details": details, "lang": lang or "en"}}
     for p in every:
         old = cache.get(p.path) if known_only else None
         new_cache[p.path] = {"sha": old["sha"] if old and old.get("sha") != p.sha else p.sha,

@@ -29,7 +29,10 @@ README (start):
 {readme}
 >>>
 
-Reply with JSON only: {{"summary": "...", "details": "..."}}
+Reply with JSON only: {{"language": "..", "summary": "...", "details": "..."}}
+- language: the language the README is mostly written in, as an ISO 639-1 code (en, zh, ja, es, ...).{lang_rule}
+- Write summary and details in that same language: the file must read naturally to the people \
+who wrote these docs.
 - summary: ONE sentence, at most 30 words, saying what the project is and what it does. Start with \
 the thing itself ("A ...", "Python library ...", "Desktop app ..."), not with the project name.
 - details: two or three short sentences of the facts an assistant most needs to use it well: \
@@ -43,7 +46,8 @@ PAGES_PROMPT = """You write the link descriptions of an llms.txt file for the pr
 For each page below, write what a reader finds on it, in at most 18 words: a plain noun phrase \
 or a sentence fragment, like "How to install from source and with pip, and the GPU build flags." \
 Never start with "This page", "This document" or the page title. Use only what the excerpt says. \
-No praise, no markdown.
+No praise, no markdown. Write every description in the language with ISO 639-1 code "{lang}" — \
+the language of this project's docs — keeping code, commands and product names as they are.
 
 {pages}
 
@@ -133,7 +137,7 @@ def _tidy(s: str, words: int) -> str:
     w = s.split()
     if len(w) > words:
         s = " ".join(w[:words]).rstrip(",;:") + "…"
-    if s and s[-1] not in ".…!?":
+    if s and s[-1] not in ".…!?。！？":
         s += "."
     return s[:1].upper() + s[1:]
 
@@ -152,28 +156,33 @@ def first_sentence(page: Page, words: int = 25) -> str:
     return ""
 
 
-def summarize(repo: Repo, model: Model | None) -> tuple[str, str]:
+def summarize(repo: Repo, model: Model | None) -> tuple[str, str, str]:
+    """(summary, details, language). The language is the README's, as the model reads it, unless
+    the project set one in .github/llms-txt.toml; everything after this is written in it."""
     readme = repo.readme.text if repo.readme else ""
+    forced = str(repo.config.get("language", "")).strip().lower()
     if model and readme:
         prompt = SUMMARY_PROMPT.format(
             name=repo.title,
             package=f"Package description: {repo.package_description}" if repo.package_description else "",
-            readme=readme[:6000])
+            readme=readme[:6000],
+            lang_rule=f' The project asks for "{forced}": reply with that.' if forced else "")
         for attempt in range(3):
             try:
-                d = _json(_chat_retry(model, prompt, 600))
+                d = _json(_chat_retry(model, prompt, 700))
                 s = _tidy(d.get("summary", ""), 34)
                 if s:
                     det = d.get("details", "")
-                    return s, (" ".join(str(det).split()) if det else "")
+                    lang = forced or re.sub(r"[^a-z-]", "", str(d.get("language", "en")).lower())[:8] or "en"
+                    return s, (" ".join(str(det).split()) if det else ""), lang
             except (ValueError, KeyError, json.JSONDecodeError):
                 continue                       # a reply we could not read: ask again
     if repo.package_description:
-        return _tidy(repo.package_description, 34), ""
-    return (first_sentence(repo.readme, 34) if repo.readme else ""), ""
+        return _tidy(repo.package_description, 34), "", forced or ""
+    return (first_sentence(repo.readme, 34) if repo.readme else ""), "", forced or ""
 
 
-def describe(repo: Repo, pages: list[Page], model: Model | None, cache: dict) -> dict[str, str]:
+def describe(repo: Repo, pages: list[Page], model: Model | None, cache: dict, lang: str = "en") -> dict[str, str]:
     """path → description. A cached description is reused when the page's content is unchanged —
     at the same path, or at a new one (a moved or renamed page needs no model)."""
     out: dict[str, str] = {}
@@ -196,7 +205,7 @@ def describe(repo: Repo, pages: list[Page], model: Model | None, cache: dict) ->
                               f"{p.text[:1400]}" for i, p in enumerate(group, 1))
         for _ in range(3):
             try:
-                d = _json(_chat_retry(model, PAGES_PROMPT.format(name=repo.title, pages=listing), 150 * len(group)))
+                d = _json(_chat_retry(model, PAGES_PROMPT.format(name=repo.title, pages=listing, lang=lang or "en"), 150 * len(group)))
                 res = {}
                 for i, p in enumerate(group, 1):
                     v = d.get(str(i)) or d.get(i)
