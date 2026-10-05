@@ -10,6 +10,7 @@ import json
 import re
 import subprocess
 import tomllib
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -452,7 +453,59 @@ def collect(root: Path, owner: str = "", name: str = "", branch: str = "") -> Re
             repo.examples += take(_doc_files(root / cand))
     for pg in repo.examples:
         pg.group = "examples"
+    # README-only docs: link the README's own sections, so the file is a real map, not one link
+    if len(repo.pages) < README_ONLY_BELOW and rp and rp.suffix.lower() in (".md", ".mdx", ""):
+        repo.pages += readme_sections(root, rp)
     return repo
+
+
+README_ONLY_BELOW = 3
+# sections that tell an assistant nothing about using the project
+NOT_A_SECTION = re.compile(r"^(licen[cs]e|contributors?|contributing|citation|cite|acknowledg(e)?ments?|"
+                           r"star history|stargazers|sponsors?|backers|table of contents|contents|toc|"
+                           r"changelog|news|updates|community|contact|authors?|thanks|credits|"
+                           r"disclaimer|related projects?|references|star|💫|⭐)", re.I)
+
+
+def _anchor(heading: str, seen: dict) -> str:
+    """GitHub's heading anchor: lowercase, punctuation dropped, spaces to hyphens, repeats get -1, -2."""
+    # like GitHub's slugger: letters, digits, marks (an emoji's invisible variation selector
+    # survives, so "⚠️ Risks" becomes "️-risks"), hyphens and spaces stay; everything else goes
+    a = "".join(c for c in heading.strip().lower()
+                if c in "-_ " or c.isalnum() or unicodedata.category(c).startswith("M")).replace(" ", "-")
+    n = seen.get(a, 0)
+    seen[a] = n + 1
+    return a if n == 0 else f"{a}-{n}"
+
+
+def readme_sections(root: Path, rp: Path) -> list[Page]:
+    """The README's level-2 sections as pages, linked by anchor. Text inside fenced code is
+    never taken for a heading."""
+    try:
+        raw = rp.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    raw = FRONTMATTER.sub("", raw)
+    lines, fenced, heads = raw.splitlines(), False, []
+    for i, line in enumerate(lines):
+        if re.match(r"^\s*(```|~~~)", line):
+            fenced = not fenced
+        if not fenced and re.match(r"^## +\S", line):
+            heads.append(i)
+    out, seen = [], {}
+    rel = rp.relative_to(root).as_posix()
+    for k, i in enumerate(heads):
+        title_md = lines[i][3:].strip().strip("#").strip()
+        title = re.sub(r"^[^\w(\[]+", "", _plain(title_md)).strip()
+        anchor = _anchor(_plain(title_md), seen)
+        body = "\n".join(lines[i + 1: heads[k + 1] if k + 1 < len(heads) else len(lines)])
+        text = _plain(body)
+        if not title or NOT_A_SECTION.match(title) or len(text) < 120:
+            continue
+        out.append(Page(path=f"{rel}#{anchor}", title=title[:120], text=text,
+                        sha=hashlib.sha1(body.encode("utf-8", "replace")).hexdigest()[:12],
+                        group="", order=500_000 + k))
+    return out
 
 
 def ordered(pages: list[Page]) -> list[Page]:

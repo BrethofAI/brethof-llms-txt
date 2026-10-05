@@ -62,6 +62,7 @@ skip = true                     # for the app: keep your own llms.txt, never off
 - **Docs:** the README and the top-level docs pages.
 - **One section per docs folder,** in the project's own navigation order.
 - **Very large trees** (the Linux kernel has about a hundred documentation folders) are folded: each folder becomes one link to its index page, and the folders the navigation doesn't name go under **Optional**.
+- **README-only projects:** when the docs are just the README, its sections (installation, usage, configuration…) are linked directly, by their GitHub anchors.
 - **Optional also holds** the changelog, the contributing guide, and folders written for the project's own developers (design decisions, specs, RFCs).
 - **Left out:** translations (folders that mirror the docs in another language), blog posts, tests, and pages too short to be worth a link.
 

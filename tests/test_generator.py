@@ -92,6 +92,24 @@ class Repair(unittest.TestCase):
         self.assertEqual(cache["docs/install.md"]["sha"], self.cache["docs/install.md"]["sha"])
 
 
+class ReadmeSections(unittest.TestCase):
+    def test_readme_only_project_gets_its_sections(self):
+        body = ("Text long enough to be worth a link for anyone reading this section of the README file, "
+                "with a second clause so it clears the minimum length.\n")
+        root = make_repo({"README.md": "# Tool\n\nTool does one thing well enough to describe it here.\n\n"
+                          "## 🚀 Quick Start\n\n" + body + "## ⚠️ Risks and Limitations\n\n" + body +
+                          "## Usage\n\n```\n## not a heading inside code\n```\n" + body +
+                          "## License\n\n" + body + "## Usage\n\n" + body})
+        text, _ = generate(collect(root), None)
+        self.assertIn("README.md#-quick-start)", text)
+        self.assertIn("README.md#️-risks-and-limitations)", text)    # GitHub keeps the variation selector
+        self.assertIn("README.md#usage)", text)
+        self.assertIn("README.md#usage-1)", text)                         # repeated heading
+        self.assertNotIn("#license", text)
+        self.assertNotIn("not-a-heading", text)
+        self.assertIn("https://github.com/acme/demo/blob/", text)        # anchors need GitHub's page, not raw
+
+
 class Validator(unittest.TestCase):
     def test_good(self):
         self.assertEqual(check("# X\n\n> s\n\n## Docs\n\n- [a](https://a.b/c): d\n")[0], [])

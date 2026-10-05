@@ -17,6 +17,10 @@ INTERNAL = {"decisions", "adr", "adrs", "design", "designs", "spec", "specs", "r
 
 def link(repo: Repo, path: str) -> str:
     style = repo.config.get("links", "raw")
+    if "#" in path and repo.owner and not repo.config.get("base_url"):
+        # a README section: raw files cannot jump to a heading, GitHub's page can
+        file, anchor = path.split("#", 1)
+        return f"https://github.com/{repo.owner}/{repo.name}/blob/{repo.branch}/{quote(file)}#{anchor}"
     if repo.config.get("base_url"):
         return repo.config["base_url"].rstrip("/") + "/" + quote(path)
     if not repo.owner:
