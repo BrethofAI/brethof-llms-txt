@@ -14,7 +14,7 @@ An `llms.txt` is a short markdown file at the root of a project. It tells AI ass
 
 [Install Brethof llms.txt](https://github.com/apps/brethof-llms-txt) on the repositories you choose. It opens a pull request that adds `llms.txt`, written with our hosted model, and updates that pull request (or opens a new one) when your docs change. Nothing to configure and no API key. Its commits are made through GitHub's API, so GitHub signs them (Verified). Free for public repositories.
 
-It never replaces an `llms.txt` you wrote yourself. Close its pull request without merging and it will not open another on that repository.
+If you already have an `llms.txt`, it offers its own version as a pull request for you to compare; nothing changes unless you merge. Close its pull request without merging and it will not open another on that repository.
 
 ## Use it as a GitHub Action
 
@@ -54,6 +54,7 @@ max_links = 80
 links = "raw"                   # raw (plain markdown, default) or blob (GitHub pages)
 base_url = "https://example.com/docs-src"   # link to another host instead
 mode = "commit"                 # for the app: commit instead of opening pull requests
+skip = true                     # for the app: keep your own llms.txt, never offer one
 ```
 
 ## How it chooses what to link

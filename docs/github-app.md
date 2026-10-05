@@ -6,7 +6,7 @@ The [Brethof llms.txt](https://github.com/apps/brethof-llms-txt) app runs the sa
 
 Within a day of installing, the app opens a pull request that adds `llms.txt` to the root of the repository. The pull request says how the file was made and which model wrote the descriptions. Read it before merging: you know your project, the model only read it.
 
-If the repository already has an `llms.txt` that you wrote, the app leaves it alone. To let the app take it over, add a `.github/llms-txt.toml`.
+If the repository already has an `llms.txt`, the app still opens a pull request with its own version, and says so: compare the two and keep the one you prefer. A hand-written file is usually written once and goes stale, while the app's is kept current. To keep yours and stop the app from offering one, set `skip = true` in `.github/llms-txt.toml`, or close the pull request.
 
 ## Keeping it current
 
