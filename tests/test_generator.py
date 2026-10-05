@@ -59,6 +59,39 @@ class Generator(unittest.TestCase):
         self.assertEqual(a, b)
 
 
+class Repair(unittest.TestCase):
+    """known_only: the no-model fix between weekly passes."""
+
+    def setUp(self):
+        self.root = make_repo(REPO)
+        self.text, cache = generate(collect(self.root), None)
+        # pretend a model wrote these, so a reused one is recognisable
+        self.cache = {k: ({**v, "desc": "MODEL " + k} if not k.startswith("_") else v) for k, v in cache.items()}
+
+    def run_repair(self):
+        return generate(collect(self.root), None, json.loads(json.dumps(self.cache)), known_only=True)
+
+    def test_moved_page_keeps_its_description(self):
+        (self.root / "docs/guides").mkdir(exist_ok=True)
+        (self.root / "docs/install.md").rename(self.root / "docs/guides/install.md")
+        text, _ = self.run_repair()
+        self.assertIn("docs/guides/install.md", text)
+        self.assertIn("MODEL docs/install.md", text)
+
+    def test_deleted_page_drops_out_and_new_page_waits(self):
+        (self.root / "docs/guides/first.md").unlink()
+        (self.root / "docs/new.md").write_text("# New\n\n" + PAGE)
+        text, _ = self.run_repair()
+        self.assertNotIn("first.md", text)
+        self.assertNotIn("docs/new.md", text)
+
+    def test_changed_page_keeps_old_words_until_the_next_pass(self):
+        (self.root / "docs/install.md").write_text("# Installing\n\nCompletely new install text, long enough to read and to be worth a link in the file.\n")
+        text, cache = self.run_repair()
+        self.assertIn("MODEL docs/install.md", text)
+        self.assertEqual(cache["docs/install.md"]["sha"], self.cache["docs/install.md"]["sha"])
+
+
 class Validator(unittest.TestCase):
     def test_good(self):
         self.assertEqual(check("# X\n\n> s\n\n## Docs\n\n- [a](https://a.b/c): d\n")[0], [])

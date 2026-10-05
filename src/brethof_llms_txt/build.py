@@ -101,10 +101,21 @@ def plan(repo: Repo, max_links: int = MAX_LINKS) -> tuple[list[tuple[str, list[P
 
 
 def generate(repo: Repo, model: Model | None, cache: dict | None = None,
-             max_links: int = MAX_LINKS) -> tuple[str, dict]:
-    """Return the llms.txt text and the new cache (descriptions keyed by page sha)."""
+             max_links: int = MAX_LINKS, known_only: bool = False) -> tuple[str, dict]:
+    """Return the llms.txt text and the new cache (descriptions keyed by page sha).
+
+    known_only: the no-model repair the App makes between weekly passes. Pages already in the
+    file keep their description (a moved page follows its content), deleted pages drop out,
+    and NEW pages wait for the next pass with a model. A page whose content changed keeps its
+    old description and its old sha, so the next pass still sees the change."""
     cache = dict(cache or {})
     sections, optional = plan(repo, repo.config.get("max_links", max_links))
+    if known_only:
+        known_sha = {v.get("sha") for k, v in cache.items() if not k.startswith("_") and isinstance(v, dict)}
+        keep = lambda p: p.path in cache or p.sha in known_sha
+        sections = [(n, [p for p in ps if keep(p)]) for n, ps in sections]
+        sections = [(n, ps) for n, ps in sections if ps]
+        optional = [p for p in optional if keep(p)]
     every = [p for _, ps in sections for p in ps] + optional
 
     # summary: reused while the README and package description are unchanged
@@ -113,15 +124,23 @@ def generate(repo: Repo, model: Model | None, cache: dict | None = None,
     hit = cache.get("_summary", {})
     if repo.config.get("summary"):
         summary, details = repo.config["summary"], repo.config.get("details", "")
-    elif hit.get("sha") == skey:
+    elif hit.get("sha") == skey or (known_only and hit):
         summary, details = hit.get("summary", ""), hit.get("details", "")
+        skey = hit.get("sha", skey)
     else:
         summary, details = summarize(repo, model)
-    descs = describe(repo, every, model, cache)
+    if known_only:
+        stale = {p.path: cache[p.path] for p in every if p.path in cache and cache[p.path].get("sha") != p.sha}
+        descs = describe(repo, [p for p in every if p.path not in stale], None, cache)
+        descs.update({path: v.get("desc", "") for path, v in stale.items()})
+    else:
+        descs = describe(repo, every, model, cache)
 
     new_cache = {"_summary": {"sha": skey, "summary": summary, "details": details}}
     for p in every:
-        new_cache[p.path] = {"sha": p.sha, "desc": descs.get(p.path, "")}
+        old = cache.get(p.path) if known_only else None
+        new_cache[p.path] = {"sha": old["sha"] if old and old.get("sha") != p.sha else p.sha,
+                             "desc": descs.get(p.path, "")}
 
     out = [f"# {repo.title}", ""]
     if summary:

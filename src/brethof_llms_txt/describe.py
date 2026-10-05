@@ -158,13 +158,18 @@ def summarize(repo: Repo, model: Model | None) -> tuple[str, str]:
 
 
 def describe(repo: Repo, pages: list[Page], model: Model | None, cache: dict) -> dict[str, str]:
-    """path → description. Cached descriptions are reused when the page's sha is unchanged."""
+    """path → description. A cached description is reused when the page's content is unchanged —
+    at the same path, or at a new one (a moved or renamed page needs no model)."""
     out: dict[str, str] = {}
     todo: list[Page] = []
+    by_sha = {v["sha"]: v["desc"] for k, v in cache.items()
+              if not k.startswith("_") and isinstance(v, dict) and v.get("sha") and v.get("desc")}
     for p in pages:
         hit = cache.get(p.path)
         if hit and hit.get("sha") == p.sha and hit.get("desc"):
             out[p.path] = hit["desc"]
+        elif p.sha in by_sha:
+            out[p.path] = by_sha[p.sha]
         elif model:
             todo.append(p)
         else:
