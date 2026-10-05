@@ -14,7 +14,8 @@ import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+import threading
+from dataclasses import dataclass, field
 
 from .collect import Page, Repo
 
@@ -64,6 +65,17 @@ class Model:
                               # ollama backend: passed as `think` ("low", "high", or "false")
     workers: int = 4
     timeout: int = 180
+    # what this model has been asked for, so the cost of a run is measured, not guessed:
+    # calls, prompt tokens in, tokens out (thinking included — it is generated, so it costs)
+    usage: dict = field(default_factory=lambda: {"calls": 0, "in": 0, "out": 0, "seconds": 0.0})
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
+
+    def _count(self, tin: int, tout: int, secs: float):
+        with self._lock:
+            self.usage["calls"] += 1
+            self.usage["in"] += int(tin or 0)
+            self.usage["out"] += int(tout or 0)
+            self.usage["seconds"] += secs
 
     def chat(self, prompt: str, max_tokens: int = 1200) -> str:
         msgs = [{"role": "user", "content": prompt}]
@@ -81,6 +93,7 @@ class Model:
         req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
                                      headers={"Content-Type": "application/json",
                                               **({"Authorization": f"Bearer {self.key}"} if self.key else {})})
+        t0 = time.time()
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
                 d = json.load(r)
@@ -91,7 +104,10 @@ class Model:
         except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException) as e:
             raise ModelUnavailable(f"{self.base}: {type(e).__name__}: {e}") from e
         if self.backend == "ollama":
+            self._count(d.get("prompt_eval_count"), d.get("eval_count"), time.time() - t0)
             return d.get("message", {}).get("content", "") or ""
+        u = d.get("usage") or {}
+        self._count(u.get("prompt_tokens"), u.get("completion_tokens"), time.time() - t0)
         return d["choices"][0]["message"].get("content") or ""
 
 

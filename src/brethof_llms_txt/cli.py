@@ -37,13 +37,18 @@ def _model(a) -> Model | None:
                  think=a.think or os.environ.get("LLMS_TXT_THINK", ""), workers=a.workers)
 
 
+_last_model: Model | None = None
+
+
 def cmd_generate(a) -> int:
     root = Path(a.path)
     repo = collect(root, owner=a.owner or "", name=a.name or "", branch=a.branch or "")
     state = Path(a.state) if a.state else None
     cache = json.loads(state.read_text()) if state and state.is_file() else {}
+    global _last_model
+    _last_model = _model(a)
     try:
-        text, new_cache = generate(repo, _model(a), cache)
+        text, new_cache = generate(repo, _last_model, cache)
     except ModelUnavailable as e:
         print(f"the model did not answer, nothing written: {e}", file=sys.stderr)
         return 2
@@ -58,6 +63,11 @@ def cmd_generate(a) -> int:
         state.parent.mkdir(parents=True, exist_ok=True)
         state.write_text(json.dumps(new_cache, indent=1, ensure_ascii=False, sort_keys=True) + "\n")
     links_n = text.count("\n- [")
+    m = _last_model
+    if m and m.usage["calls"]:
+        u = m.usage
+        print(f"model {m.model}: {u['calls']} calls, {u['in']} tokens in, {u['out']} tokens out, "
+              f"{u['seconds']:.1f} s", file=sys.stderr)
     print(f"{'unchanged' if old == text else 'wrote'} {out.name}: {links_n} links, "
           f"{len(errors)} errors, {len(warnings)} warnings", file=sys.stderr)
     for e in errors:
