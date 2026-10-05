@@ -66,6 +66,10 @@ skip = true                     # for the app: keep your own llms.txt, never off
 - **Optional also holds** the changelog, the contributing guide, and folders written for the project's own developers (design decisions, specs, RFCs).
 - **Left out:** translations (folders that mirror the docs in another language), blog posts, tests, and pages too short to be worth a link.
 
+## Privacy and support
+
+The App's privacy policy is in [PRIVACY.md](PRIVACY.md). For help, open an [issue](https://github.com/BrethofAI/brethof-llms-txt/issues) or email hello@brethof.ai.
+
 ## Licence
 
 MIT. Made by [BrethofAI](https://github.com/BrethofAI).
