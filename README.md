@@ -10,6 +10,12 @@ An `llms.txt` is a short markdown file at the root of a project. It tells AI ass
 - **Checks the format.** `check` validates a file against the llms.txt format and, with `--links`, checks that every link answers.
 - **No dependencies.** Python 3.11+ standard library only.
 
+## Use the GitHub App
+
+[Install Brethof llms.txt](https://github.com/apps/brethof-llms-txt) on the repositories you choose. It opens a pull request that adds `llms.txt`, written with our hosted model, and updates that pull request (or opens a new one) when your docs change. Nothing to configure and no API key. Free for public repositories.
+
+Close its pull request without merging and it will not open another on that repository.
+
 ## Use it as a GitHub Action
 
 Copy [`examples/llms-txt.yml`](examples/llms-txt.yml) to `.github/workflows/llms-txt.yml`. When the docs change, the Action rebuilds `llms.txt` and opens a pull request (or commits directly, with `mode: commit`).
