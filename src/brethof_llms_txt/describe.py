@@ -8,7 +8,9 @@ model calls and produces the same file byte for byte.
 from __future__ import annotations
 
 import json
+import http.client
 import re
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -47,6 +49,11 @@ No praise, no markdown.
 Reply with JSON only, one key per page id: {{"1": "...", "2": "..."}}"""
 
 
+class ModelUnavailable(RuntimeError):
+    """The model server did not answer. Never paper over this with weaker text: the caller
+    decides (the App puts the job back in the queue; the CLI stops and says so)."""
+
+
 @dataclass
 class Model:
     base: str                 # OpenAI-compatible base (…/v1) or an Ollama host (…:11434)
@@ -74,11 +81,27 @@ class Model:
         req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
                                      headers={"Content-Type": "application/json",
                                               **({"Authorization": f"Bearer {self.key}"} if self.key else {})})
-        with urllib.request.urlopen(req, timeout=self.timeout) as r:
-            d = json.load(r)
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as r:
+                d = json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code >= 500 or e.code in (404, 408, 429):
+                raise ModelUnavailable(f"{self.base}: HTTP {e.code}") from e
+            raise
+        except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException) as e:
+            raise ModelUnavailable(f"{self.base}: {type(e).__name__}: {e}") from e
         if self.backend == "ollama":
             return d.get("message", {}).get("content", "") or ""
         return d["choices"][0]["message"].get("content") or ""
+
+
+def _chat_retry(model: "Model", prompt: str, max_tokens: int) -> str:
+    """One more try after a pause for a blip; a server that is really gone raises ModelUnavailable."""
+    try:
+        return model.chat(prompt, max_tokens)
+    except ModelUnavailable:
+        time.sleep(10)
+        return model.chat(prompt, max_tokens)
 
 
 def _json(reply: str) -> dict:
@@ -120,15 +143,15 @@ def summarize(repo: Repo, model: Model | None) -> tuple[str, str]:
             name=repo.title,
             package=f"Package description: {repo.package_description}" if repo.package_description else "",
             readme=readme[:6000])
-        for _ in range(2):
+        for attempt in range(3):
             try:
-                d = _json(model.chat(prompt, 600))
+                d = _json(_chat_retry(model, prompt, 600))
                 s = _tidy(d.get("summary", ""), 34)
                 if s:
                     det = d.get("details", "")
                     return s, (" ".join(str(det).split()) if det else "")
-            except (ValueError, KeyError, urllib.error.URLError, TimeoutError, json.JSONDecodeError):
-                continue
+            except (ValueError, KeyError, json.JSONDecodeError):
+                continue                       # a reply we could not read: ask again
     if repo.package_description:
         return _tidy(repo.package_description, 34), ""
     return (first_sentence(repo.readme, 34) if repo.readme else ""), ""
@@ -150,15 +173,15 @@ def describe(repo: Repo, pages: list[Page], model: Model | None, cache: dict) ->
     def batch(group: list[Page]) -> dict[str, str]:
         listing = "\n\n".join(f"[{i}] {p.title} ({p.path})\n{p.meta_description + ' ' if p.meta_description else ''}"
                               f"{p.text[:1400]}" for i, p in enumerate(group, 1))
-        for _ in range(2):
+        for _ in range(3):
             try:
-                d = _json(model.chat(PAGES_PROMPT.format(name=repo.title, pages=listing), 150 * len(group)))
+                d = _json(_chat_retry(model, PAGES_PROMPT.format(name=repo.title, pages=listing), 150 * len(group)))
                 res = {}
                 for i, p in enumerate(group, 1):
                     v = d.get(str(i)) or d.get(i)
                     res[p.path] = _tidy(v, 22) if v else first_sentence(p)
                 return res
-            except (ValueError, KeyError, urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+            except (ValueError, KeyError, json.JSONDecodeError):
                 continue
         return {p.path: first_sentence(p) for p in group}
 

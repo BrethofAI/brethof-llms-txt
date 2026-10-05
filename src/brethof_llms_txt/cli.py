@@ -23,7 +23,7 @@ from pathlib import Path
 from . import __version__
 from .build import generate
 from .collect import collect
-from .describe import Model
+from .describe import Model, ModelUnavailable
 from .validate import check, links
 
 
@@ -42,7 +42,11 @@ def cmd_generate(a) -> int:
     repo = collect(root, owner=a.owner or "", name=a.name or "", branch=a.branch or "")
     state = Path(a.state) if a.state else None
     cache = json.loads(state.read_text()) if state and state.is_file() else {}
-    text, new_cache = generate(repo, _model(a), cache)
+    try:
+        text, new_cache = generate(repo, _model(a), cache)
+    except ModelUnavailable as e:
+        print(f"the model did not answer, nothing written: {e}", file=sys.stderr)
+        return 2
     errors, warnings = check(text)
     out = Path(a.out) if Path(a.out).is_absolute() else root / a.out
     old = out.read_text(encoding="utf-8") if out.is_file() else None
