@@ -16,7 +16,7 @@ On the paid plan every change is handled within minutes.
 
 ## Pull requests or direct commits
 
-The first file always comes as a pull request. Its description has a checkbox, "Commit future updates directly". Tick it before you merge, and later updates go straight to your default branch. GitHub does not report edits to a pull request that is already closed, so to change your mind later, use the same checkbox on the app's next pull request, or set `mode = "commit"` or `mode = "pr"` in `.github/llms-txt.toml`. Both kinds of commit are made through GitHub's API, so GitHub signs them and they show as Verified.
+The first file always comes as a pull request. Its description has a checkbox, "Commit future updates directly". Tick it and later updates go straight to your default branch; untick it to go back to pull requests. The box works before and after merging, and `mode = "commit"` or `mode = "pr"` in `.github/llms-txt.toml` does the same. Both kinds of commit are made through GitHub's API, so GitHub signs them and they show as Verified.
 
 ## Saying no
 
