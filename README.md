@@ -14,7 +14,7 @@ An `llms.txt` is a short markdown file at the root of a project. It tells AI ass
 
 [Install Brethof llms.txt](https://github.com/apps/brethof-llms-txt) on the repositories you choose. It opens a pull request that adds `llms.txt`, written with our hosted model, and updates that pull request (or opens a new one) when your docs change. Nothing to configure and no API key. Free for public repositories.
 
-Close its pull request without merging and it will not open another on that repository.
+It never replaces an `llms.txt` you wrote yourself. Close its pull request without merging and it will not open another on that repository.
 
 ## Use it as a GitHub Action
 
