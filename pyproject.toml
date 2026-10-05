@@ -1,0 +1,22 @@
+[project]
+name = "brethof-llms-txt"
+version = "0.1.0"
+description = "Write and keep an llms.txt for a GitHub repository, from its README and docs."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "BrethofAI", email = "hello@brethof.ai" }]
+dependencies = []
+
+[project.scripts]
+brethof-llms-txt = "brethof_llms_txt.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/BrethofAI/brethof-llms-txt"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,26 @@
+# Copy to .github/workflows/llms-txt.yml. Rebuilds llms.txt when the docs change and opens a
+# pull request with the new file. Repository setting needed for the pull request:
+# Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests".
+name: llms.txt
+
+on:
+  push:
+    branches: [main]
+    paths: ["**.md", "**.mdx", "**.rst", "**.ipynb", "mkdocs.yml", "book.toml", ".github/llms-txt.toml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  llms-txt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: BrethofAI/brethof-llms-txt@v1
+        # Optional: let a model write the descriptions.
+        # with:
+        #   api-base: https://api.example.com/v1
+        #   model: your-model
+        #   api-key: ${{ secrets.LLMS_TXT_API_KEY }}

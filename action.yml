@@ -1,0 +1,83 @@
+name: brethof-llms-txt
+description: Write an llms.txt for this repository from its README and docs, and keep it current.
+author: BrethofAI
+branding:
+  icon: file-text
+  color: blue
+
+inputs:
+  mode:
+    description: "pull-request (default): propose changes in a pull request. commit: push them to the branch that ran the workflow."
+    default: pull-request
+  api-base:
+    description: "OpenAI-compatible endpoint (…/v1) for the descriptions. Empty: descriptions come from the pages themselves, no model."
+    default: ""
+  api-key:
+    description: Key for that endpoint. Pass it from a secret.
+    default: ""
+  model:
+    description: Model name at that endpoint.
+    default: ""
+  backend:
+    description: "openai (default) or ollama."
+    default: openai
+  think:
+    description: "openai: 'off' disables thinking on Qwen-style models. ollama: low, high or false."
+    default: ""
+  check-links:
+    description: "true: fail when a link in llms.txt does not answer."
+    default: "false"
+  token:
+    description: Token used to push and to open the pull request.
+    default: ${{ github.token }}
+
+outputs:
+  changed:
+    description: "true when llms.txt changed"
+    value: ${{ steps.gen.outputs.changed }}
+
+runs:
+  using: composite
+  steps:
+    - id: gen
+      shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}/src
+        LLMS_TXT_API_BASE: ${{ inputs.api-base }}
+        LLMS_TXT_API_KEY: ${{ inputs.api-key }}
+        LLMS_TXT_MODEL: ${{ inputs.model }}
+        LLMS_TXT_BACKEND: ${{ inputs.backend }}
+        LLMS_TXT_THINK: ${{ inputs.think }}
+      run: |
+        python3 -m brethof_llms_txt generate . --state .github/llms-txt.lock.json
+        if [ "${{ inputs.check-links }}" = "true" ]; then
+          python3 -m brethof_llms_txt check llms.txt --links
+        fi
+        if [ -n "$(git status --porcelain -- llms.txt .github/llms-txt.lock.json)" ]; then
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - if: steps.gen.outputs.changed == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        MODE: ${{ inputs.mode }}
+        BASE: ${{ github.ref_name }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add llms.txt .github/llms-txt.lock.json
+        if [ "$MODE" = "commit" ]; then
+          git commit -q -m "Update llms.txt"
+          git push -q origin "HEAD:$BASE"
+          exit 0
+        fi
+        git switch -q -C brethof-llms-txt
+        git commit -q -m "Update llms.txt"
+        git push -q -f origin brethof-llms-txt
+        if ! gh pr view brethof-llms-txt --json state -q .state 2>/dev/null | grep -q OPEN; then
+          gh pr create --base "$BASE" --head brethof-llms-txt --title "Update llms.txt" \
+            --body "The docs changed, so llms.txt was rebuilt by [brethof-llms-txt](https://github.com/BrethofAI/brethof-llms-txt). Please read it before merging."
+        fi

@@ -1,0 +1,12 @@
+name: test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: PYTHONPATH=src python3 -m unittest discover -s tests -v
+      - name: The generator on its own repository
+        run: |
+          PYTHONPATH=src python3 -m brethof_llms_txt generate . --stdout > /tmp/llms.txt
+          PYTHONPATH=src python3 -m brethof_llms_txt check /tmp/llms.txt
