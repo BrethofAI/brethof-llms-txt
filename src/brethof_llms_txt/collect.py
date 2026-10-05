@@ -246,7 +246,7 @@ def _find_docs_root(root: Path, cfg: dict) -> Path | None:
     if cfg.get("docs"):
         p = root / cfg["docs"]
         return p if p.is_dir() else None
-    best, best_n = None, 2                    # a "docs" folder with one file is not docs
+    best, best_n = None, 0
     cands = [root / c for c in DOC_ROOTS]
     if (root / "book.toml").is_file():        # mdBook: the book lives in its src folder
         try:
@@ -261,7 +261,10 @@ def _find_docs_root(root: Path, cfg: dict) -> Path | None:
     for p in cands:
         if p.is_dir():
             n = len(_doc_files(p))
-            if n > best_n:
+            # a folder NAMED docs is docs from its first page; a generic name (content, pages,
+            # guide) has to hold a few pages before it is taken for the documentation
+            need = 1 if p.name.lower() in ("docs", "doc", "documentation") else 3
+            if n >= need and n > (best_n if best else 0):
                 best, best_n = p, n
     return best
 
