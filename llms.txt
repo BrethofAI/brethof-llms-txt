@@ -7,4 +7,4 @@ It runs on Python 3.11+ with no external dependencies and can be used via a GitH
 ## Docs
 
 - [brethof-llms-txt](https://raw.githubusercontent.com/BrethofAI/brethof-llms-txt/main/README.md): Generates and maintains an llms.txt file from repository documentation, using deterministic structure and optional model-written descriptions.
-- [How the GitHub App works](https://raw.githubusercontent.com/BrethofAI/brethof-llms-txt/main/docs/github-app.md): How the app generates the first file, schedules updates, and manages pull requests versus direct commits.
+- [How the GitHub App works](https://raw.githubusercontent.com/BrethofAI/brethof-llms-txt/main/docs/github-app.md): How the app generates the first file, schedules updates, and handles pull requests versus direct commits.
