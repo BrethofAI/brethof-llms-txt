@@ -196,6 +196,9 @@ def _skip_dir(name: str) -> bool:
     return name.startswith(".") or low in SKIP_DIRS or low in LANG_DIRS
 
 
+README_PART = re.compile(r"^readme[._-].+", re.I)   # README.head.md, README.foot.md: pieces of the README
+
+
 def _doc_files(base: Path, skip: set[Path] | None = None) -> list[Path]:
     skip = _MIRRORS if skip is None else skip
     out = []
@@ -213,7 +216,7 @@ def _doc_files(base: Path, skip: set[Path] | None = None) -> list[Path]:
                 if not _skip_dir(p.name) and not p.is_symlink() and p.resolve() not in skip:
                     stack.append(p)
             elif p.suffix.lower() in DOC_EXT and not LANG_SUFFIX.search(p.stem) \
-                    and p.stem.lower() not in SKIP_ROOT:
+                    and p.stem.lower() not in SKIP_ROOT and not README_PART.match(p.stem):
                 out.append(p)
     return out
 
@@ -432,7 +435,7 @@ def collect(root: Path, owner: str = "", name: str = "", branch: str = "") -> Re
     # other root-level documents (llama.cpp keeps docs at the root too)
     roots = [p for p in sorted(root.iterdir()) if p.is_file() and p.suffix.lower() in DOC_EXT
              and p.stem.lower() not in SKIP_ROOT and p.stem.lower() not in SECONDARY
-             and not LANG_SUFFIX.search(p.stem)]
+             and not LANG_SUFFIX.search(p.stem) and not README_PART.match(p.stem)]
     repo.pages = take(roots) + repo.pages
 
     for cand in EXAMPLE_ROOTS:
