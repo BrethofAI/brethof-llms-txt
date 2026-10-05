@@ -10,3 +10,18 @@ jobs:
         run: |
           PYTHONPATH=src python3 -m brethof_llms_txt generate . --stdout > /tmp/llms.txt
           PYTHONPATH=src python3 -m brethof_llms_txt check /tmp/llms.txt
+
+  action:
+    # the Action itself, on GitHub's runners, writing nothing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: run
+        uses: ./
+        with:
+          dry-run: "true"
+          check-links: "true"
+      - run: |
+          test -s llms.txt
+          head -3 llms.txt
+          echo "changed=${{ steps.run.outputs.changed }}"

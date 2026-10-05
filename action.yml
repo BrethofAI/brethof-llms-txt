@@ -27,6 +27,9 @@ inputs:
   check-links:
     description: "true: fail when a link in llms.txt does not answer."
     default: "false"
+  dry-run:
+    description: "true: build and check llms.txt, write nothing to the repository."
+    default: "false"
   token:
     description: Token used to push and to open the pull request.
     default: ${{ github.token }}
@@ -59,7 +62,7 @@ runs:
           echo "changed=false" >> "$GITHUB_OUTPUT"
         fi
 
-    - if: steps.gen.outputs.changed == 'true'
+    - if: steps.gen.outputs.changed == 'true' && inputs.dry-run != 'true'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
@@ -74,10 +77,10 @@ runs:
           git push -q origin "HEAD:$BASE"
           exit 0
         fi
-        git switch -q -C brethof-llms-txt
+        git switch -q -C llms-txt-action
         git commit -q -m "Update llms.txt"
-        git push -q -f origin brethof-llms-txt
-        if ! gh pr view brethof-llms-txt --json state -q .state 2>/dev/null | grep -q OPEN; then
-          gh pr create --base "$BASE" --head brethof-llms-txt --title "Update llms.txt" \
+        git push -q -f origin llms-txt-action
+        if ! gh pr view llms-txt-action --json state -q .state 2>/dev/null | grep -q OPEN; then
+          gh pr create --base "$BASE" --head llms-txt-action --title "Update llms.txt" \
             --body "The docs changed, so llms.txt was rebuilt by [brethof-llms-txt](https://github.com/BrethofAI/brethof-llms-txt). Please read it before merging."
         fi
