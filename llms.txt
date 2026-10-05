@@ -1,10 +1,10 @@
 # brethof-llms-txt
 
-> A Python tool that generates and maintains an llms.txt file for GitHub repositories by reading READMEs and documentation folders.
+> A Python tool that generates and maintains an llms.txt file for GitHub repositories based on existing documentation and navigation structures.
 
-It runs on Python 3.11+ with no external dependencies and can be used via a GitHub App, GitHub Action, or command line. The tool structures links based on project navigation and uses a model to write descriptions, ensuring the file stays current with documentation changes.
+It runs on Python 3.11+ using only the standard library. It can be deployed as a GitHub App, GitHub Action, or command-line tool. It uses deterministic scripts for structure and optional models for descriptions.
 
 ## Docs
 
-- [brethof-llms-txt](https://raw.githubusercontent.com/BrethofAI/brethof-llms-txt/main/README.md): Generates and maintains an llms.txt file from repository documentation, using deterministic structure and optional model-written descriptions.
-- [How the GitHub App works](https://raw.githubusercontent.com/BrethofAI/brethof-llms-txt/main/docs/github-app.md): How the app generates the first file, schedules updates, and handles pull requests versus direct commits.
+- [brethof-llms-txt](https://raw.githubusercontent.com/BrethofAI/brethof-llms-txt/main/README.md): Generates and maintains llms.txt from repository docs, using deterministic structure and optional model-written descriptions.
+- [How the GitHub App works](https://raw.githubusercontent.com/BrethofAI/brethof-llms-txt/main/docs/github-app.md): Explains how the GitHub App creates, updates, and manages llms.txt files via pull requests and scheduled runs.
