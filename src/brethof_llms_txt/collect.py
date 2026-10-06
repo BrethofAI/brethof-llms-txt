@@ -279,6 +279,12 @@ def _find_docs_root(root: Path, cfg: dict) -> Path | None:
             need = 1 if p.name.lower() in ("docs", "doc", "documentation") else 3
             if n >= need and n > (best_n if best else 0):
                 best, best_n = p, n
+    # Sphinx's split layout keeps the pages in docs/source (docs/build is output): the docs are
+    # there, not in a section called "Source" (FlagEmbedding, 2026-10-06)
+    idx = ("index.rst", "index.md")
+    if best and (best / "source").is_dir() and any((best / "source" / i).is_file() for i in idx) \
+            and not any((best / i).is_file() for i in idx):
+        best = best / "source"
     return best
 
 
