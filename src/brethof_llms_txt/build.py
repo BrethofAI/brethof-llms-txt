@@ -17,6 +17,12 @@ INTERNAL = {"decisions", "adr", "adrs", "design", "designs", "spec", "specs", "r
 
 def link(repo: Repo, path: str) -> str:
     style = repo.config.get("links", "raw")
+    if style == "relative":
+        # paths inside the repository: right in every clone, fork and branch (asked for by a
+        # maintainer, exllamav3 #452, 2026-10-06); readers that fetch the file resolve them
+        # against its own address
+        file, _, anchor = path.partition("#")
+        return quote(file) + (f"#{anchor}" if anchor else "")
     if "#" in path and repo.owner and not repo.config.get("base_url"):
         # a README section: raw files cannot jump to a heading, GitHub's page can
         file, anchor = path.split("#", 1)

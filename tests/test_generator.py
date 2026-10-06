@@ -110,6 +110,14 @@ class ReadmeSections(unittest.TestCase):
         self.assertIn("https://github.com/acme/demo/blob/", text)        # anchors need GitHub's page, not raw
 
 
+class RelativeLinks(unittest.TestCase):
+    def test_relative_paths_stay_inside_the_repo(self):
+        root = make_repo({**REPO, ".github/llms-txt.toml": '[llms-txt]\nlinks = "relative"\n'})
+        text, _ = generate(collect(root), None)
+        self.assertIn("](docs/install.md)", text)
+        self.assertNotIn("https://", text.split("## Docs", 1)[1])
+
+
 class Validator(unittest.TestCase):
     def test_good(self):
         self.assertEqual(check("# X\n\n> s\n\n## Docs\n\n- [a](https://a.b/c): d\n")[0], [])
