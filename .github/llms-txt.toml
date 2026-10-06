@@ -1,0 +1,3 @@
+[llms-txt]
+# the example outputs in examples/ are sample files for other projects, not our docs
+exclude = ["^examples/.*\\.llms\\.md$"]
